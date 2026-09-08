@@ -1,122 +1,287 @@
 import 'package:flutter/material.dart';
+import 'services/api_service.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const NexusEnergyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class NexusEnergyApp extends StatelessWidget {
+  const NexusEnergyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Nexus Energy',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF0F172A), // Azul Oscuro Slate
+        primaryColor: const Color(0xFF0D9488), // Verde Esmeralda / Turquesa
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF0D9488),
+          secondary: Color(0xFF14B8A6),
+          surface: Color(0xFF1E293B),
+        ),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const DashboardScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _DashboardScreenState extends State<DashboardScreen> {
+  List<dynamic> dispositivos = [];
+  bool cargando = true;
+  final TextEditingController _voiceController = TextEditingController();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _cargarDispositivos();
+  }
+
+  // Consulta la API enviando peticiones periódicas o manuales
+  Future<void> _cargarDispositivos() async {
+    try {
+      final datos = await ApiService.getDispositivos();
+      setState(() {
+        dispositivos = datos;
+        cargando = false;
+      });
+    } catch (e) {
+      debugPrint("Error al cargar dispositivos: $e");
+    }
+  }
+
+  // Alternar encendido / apagado (Envía la orden a Python y actualiza SQL Server)
+  Future<void> _toggleDispositivo(int id) async {
+    try {
+      await ApiService.toggleDispositivo(id);
+      _cargarDispositivos(); // Recargar datos de la pantalla
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cambiar estado: $e')),
+      );
+    }
+  }
+
+  // Enviar orden de voz al backend en Python
+  Future<void> _procesarComandoVoz() async {
+    if (_voiceController.text.trim().isEmpty) return;
+
+    final comando = _voiceController.text.trim();
+    _voiceController.clear();
+
+    try {
+      final respuesta = await ApiService.enviarComandoVoz(comando);
+      _cargarDispositivos(); // Actualizar estado de los interruptores
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const Text("Asistente Nexus", style: TextStyle(color: Color(0xFF14B8A6))),
+          content: Text(respuesta['mensaje_respuesta'] ?? 'Comando procesado'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK", style: TextStyle(color: Color(0xFF14B8A6))),
+            )
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error en comando de voz: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    // Calcular suma total de consumo instantáneo
+    double totalWatts = dispositivos.fold(0.0, (sum, dev) => sum + (dev['watts_actuales'] ?? 0.0));
+    double totalCosto = dispositivos.fold(0.0, (sum, dev) => sum + (dev['costo_mxn_hora'] ?? 0.0));
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
+        title: const Text(
+          'NEXUS ENERGY',
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Color(0xFF14B8A6)),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white70),
+            onPressed: _cargarDispositivos,
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+      body: cargando
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF14B8A6)))
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Tarjeta de Resumen General
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF0D9488).withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Consumo Actual', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text('${totalWatts.toStringAsFixed(1)} W',
+                                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('Gasto Estimado', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text('\$${totalCosto.toStringAsFixed(2)} MXN/h',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF14B8A6))),
+                          ],
+                        )
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                  const Text('Dispositivos Conectados',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white70)),
+                  const SizedBox(height: 12),
+
+                  // Grid de Tarjetas Cuadradas de Dispositivos
+                  Expanded(
+                    child: GridView.builder(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.95,
+                      ),
+                      itemCount: dispositivos.length,
+                      itemBuilder: (context, index) {
+                        final dev = dispositivos[index];
+                        final bool estaActivo = dev['estado_on'] ?? false;
+
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: estaActivo ? const Color(0xFF0D9488) : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Icon(
+                                    estaActivo ? Icons.power : Icons.power_off,
+                                    color: estaActivo ? const Color(0xFF14B8A6) : Colors.white38,
+                                    size: 28,
+                                  ),
+                                  Switch(
+                                    value: estaActivo,
+                                    activeColor: const Color(0xFF14B8A6),
+                                    onChanged: (_) => _toggleDispositivo(dev['id']),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    dev['nombre'],
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    dev['ubicacion'],
+                                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${dev['watts_actuales']} W',
+                                    style: TextStyle(
+                                      color: estaActivo ? Colors.white : Colors.white24,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    '\$${dev['costo_mxn_hora']}',
+                                    style: const TextStyle(color: Color(0xFF14B8A6), fontSize: 12),
+                                  ),
+                                ],
+                              )
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Barra del Asistente de Voz
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: const Color(0xFF14B8A6).withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _voiceController,
+                            decoration: const InputDecoration(
+                              hintText: 'Ej. "Apagar Televisor Sala"...',
+                              hintStyle: TextStyle(color: Colors.white38, fontSize: 14),
+                              border: InputBorder.none,
+                            ),
+                            onSubmitted: (_) => _procesarComandoVoz(),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send, color: Color(0xFF14B8A6)),
+                          onPressed: _procesarComandoVoz,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
