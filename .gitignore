@@ -1,0 +1,39 @@
+# ==========================================
+# 1. Variables de entorno y secretos
+# ==========================================
+.env
+*.env
+*.pem
+*.key
+config.json
+
+# ==========================================
+# 2. Archivos temporales de Python (Backend)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.pytest_cache/
+
+# ==========================================
+# 3. Archivos generados por Flutter (Frontend)
+# ==========================================
+nexus_frontend/.dart_tool/
+nexus_frontend/.flutter-plugins
+nexus_frontend/.flutter-plugins-dependencies
+nexus_frontend/.packages
+nexus_frontend/build/
+nexus_frontend/ios/Pods/
+nexus_frontend/android/.gradle/
+
+# ==========================================
+# 4. Archivos de editores de código y SO
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+Thumbs.db
