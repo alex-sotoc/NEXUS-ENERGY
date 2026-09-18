@@ -42,3 +42,6 @@ VALUES
 ('Aire Acondicionado', 'Recámara', 0, 0.0, 0.0, 0, 'ESP32_RELAY_03'),
 ('Consola de Juegos', 'Sala', 1, 50.0, 0.35, 1, 'ESP32_RELAY_04');
 GO
+
+
+SELECT id, nombre, estado_on FROM dispositivos WHERE nombre = 'Televisor Sala';

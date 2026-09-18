@@ -1,24 +1,37 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-# Conexión a SQL Server usando Autenticación de Windows (Trusted_Connection=yes)
-# Si tu servidor en SSMS tiene un nombre específico (ej: localhost\SQLEXPRESS), cámbialo en SERVER
-SERVER = 'localhost'
-DATABASE = 'nexus_energy_db'
+
+class Base(DeclarativeBase):
+    pass
+
 
 DATABASE_URL = (
-    f"mssql+pyodbc://@{SERVER}/{DATABASE}?"
-    "driver=ODBC+Driver+17+for+SQL+Server&Trusted_Connection=yes"
+    "mssql+pyodbc://@ALEX/nexus_energy_db"
+    "?driver=ODBC+Driver+18+for+SQL+Server"
+    "&trusted_connection=yes"
+    "&TrustServerCertificate=yes"
 )
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    future=True,
+)
+
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
+
 
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:

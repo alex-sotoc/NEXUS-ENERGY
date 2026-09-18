@@ -1,34 +1,133 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
-from sqlalchemy.sql import func
+from datetime import datetime
+
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.database import Base
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    email = Column(String(100), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    creado_en = Column(DateTime, server_default=func.now())
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    email: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        unique=True,
+    )
+
+    password_hash: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    creado_en: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
 
 class Dispositivo(Base):
     __tablename__ = "dispositivos"
 
-    id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(100), nullable=False)
-    ubicacion = Column(String(100), default="General")
-    estado_on = Column(Boolean, default=True)
-    watts_actuales = Column(Float, default=0.0)
-    costo_mxn_hora = Column(Float, default=0.0)
-    es_vampiro = Column(Boolean, default=False)
-    mac_esp32 = Column(String(50), nullable=True)
-    creado_en = Column(DateTime, server_default=func.now())
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    nombre: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    ubicacion: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    estado_on: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+        default=True,
+    )
+
+    watts_actuales: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        default=0.0,
+    )
+
+    costo_mxn_hora: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        default=0.0,
+    )
+
+    es_vampiro: Mapped[bool | None] = mapped_column(
+        Boolean,
+        nullable=True,
+        default=False,
+    )
+
+    mac_esp32: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+    )
+
+    creado_en: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
 
 class LecturaConsumo(Base):
     __tablename__ = "lecturas_consumo"
 
-    id = Column(Integer, primary_key=True, index=True)
-    dispositivo_id = Column(Integer, ForeignKey("dispositivos.id"))
-    watts = Column(Float, nullable=False)
-    costo_mxn = Column(Float, nullable=False)
-    fecha_hora = Column(DateTime, server_default=func.now())
+    id: Mapped[int] = mapped_column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    dispositivo_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("dispositivos.id"),
+        nullable=True,
+    )
+
+    watts: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    costo_mxn: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+    )
+
+    fecha_hora: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
+    amps: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    volts: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )

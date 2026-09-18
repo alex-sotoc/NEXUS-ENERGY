@@ -1,33 +1,86 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
 
-# Esquemas de Dispositivos
-class DispositivoBase(BaseModel):
-    nombre: str
-    ubicacion: Optional[str] = "General"
-    estado_on: bool = True
-    watts_actuales: float = 0.0
-    costo_mxn_hora: float = 0.0
-    es_vampiro: bool = False
-    mac_esp32: Optional[str] = None
+from pydantic import BaseModel, ConfigDict
 
-class DispositivoCreate(DispositivoBase):
-    pass
 
-class DispositivoResponse(DispositivoBase):
+class DeviceResponse(BaseModel):
     id: int
-    creado_en: datetime
+    device_id: str
+    nombre: str
+    ubicacion: str | None
+    estado_on: bool
+    watts_actuales: float
+    costo_mxn_hora: float
+    es_vampiro: bool
+    creado_en: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-# Esquema para comandos del Asistente de Voz
-class ComandoVozRequest(BaseModel):
-    texto: str
 
-class ComandoVozResponse(BaseModel):
-    accion_ejecutada: str
-    mensaje_respuesta: str
-    dispositivo_afectado: Optional[str] = None
-    nuevo_estado: Optional[bool] = None
+class DeviceDetailResponse(DeviceResponse):
+    last_telemetry_at: datetime | None
+    online: bool
+
+
+class TelemetryRequest(BaseModel):
+    device_id: str
+    watts: float
+    amps: float
+    volts: float
+    costo_mxn: float | None = None
+
+
+class TelemetryResponse(BaseModel):
+    message: str
+    device_id: str
+    device_database_id: int
+    watts: float
+    amps: float
+    volts: float
+
+
+class HardwareStatusResponse(BaseModel):
+    device_id: str
+    device_database_id: int
+    device_name: str
+    relay_state: bool
+    online: bool
+    last_telemetry_at: datetime | None
+
+
+class HardwareToggleRequest(BaseModel):
+    device_id: str
+    relay_state: bool
+
+
+class HardwareToggleResponse(BaseModel):
+    message: str
+    device_id: str
+    device_database_id: int
+    relay_state: bool
+
+
+class RealtimeMetricsResponse(BaseModel):
+    device_id: str
+    device_name: str
+    watts: float
+    amps: float
+    volts: float
+    relay_state: bool
+    online: bool
+    timestamp: datetime | None
+
+
+class HistoryItem(BaseModel):
+    id: int
+    watts: float
+    amps: float
+    volts: float
+    costo_mxn: float
+    timestamp: datetime
+
+
+class HistoryResponse(BaseModel):
+    device_id: str
+    device_name: str
+    readings: list[HistoryItem]
